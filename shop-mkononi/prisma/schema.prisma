@@ -1,0 +1,207 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  password          String?           @db.VarChar(255)
+  phone             String?           @unique
+  role              UserRole          @default(BUYER)
+  isVerified        Boolean           @default(false)
+  idImage           String?
+  idNumber          String?
+  verificationStatus VerificationStatus @default(PENDING)
+  shop              Shop?
+  orders            Order[]
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  accounts          Account[]
+  sessions          Session[]
+  reviews           Review[]
+  cart              Cart?
+  wishlist          Wishlist?
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model Shop {
+  id              String    @id @default(uuid())
+  slug            String    @unique
+  name            String
+  description     String?
+  sellerId        String    @unique @map("seller_id")
+  seller          User      @relation(fields: [sellerId], references: [id])
+  logoUrl         String?   @map("logo_url")
+  bannerUrl       String?   @map("banner_url")
+  primaryColor    String    @default("#0F766E") @map("primary_color")
+  secondaryColor  String    @default("#FFFFFF") @map("secondary_color")
+  accentColor     String    @default("#F59E0B") @map("accent_color")
+  fontFamily      String    @default("Inter") @map("font_family")
+  themeId         String?   @map("theme_id")
+  layoutConfig    Json?     @map("layout_config")
+  customCSS       Json?     @map("custom_css")
+  transportOptions Json?    @map("transport_options")
+  products        Product[]
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("shops")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  price       Decimal  @db.Decimal(10, 2)
+  images      String[]
+  category    String
+  shopId      String   @map("shop_id")
+  shop        Shop     @relation(fields: [shopId], references: [id])
+  orders      Order[]
+  reviews     Review[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("products")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  buyerId         String      @map("buyer_id")
+  buyer           User        @relation(fields: [buyerId], references: [id])
+  productId       String      @map("product_id")
+  product         Product     @relation(fields: [productId], references: [id])
+  amount          Decimal     @db.Decimal(10, 2)
+  transportMethod String?     @map("transport_method")
+  transportCost   Decimal?    @db.Decimal(10, 2) @map("transport_cost")
+  status          OrderStatus @default(PENDING)
+  blockchainTxId  String?     @map("blockchain_tx_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  @@map("orders")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("reviews")
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  items     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("carts")
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  items     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("wishlists")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notifications")
+}
+
+model Theme {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  thumbnail   String
+  properties  Json
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("themes")
+}
