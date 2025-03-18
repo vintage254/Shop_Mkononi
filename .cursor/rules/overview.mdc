@@ -1,0 +1,36 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- this what the plan fo this project when we ar coding have this in mind
+erview
+"Shop Mkononi" is a mobile-first online marketplace designed for Kenya, where ID-verified sellers create branded digital storefronts to sell handmade and second-hand goods. Sellers enjoy full customization over their shops, buyers experience a seamless shopping flow, and transactions are secured with M-Pesa and blockchain escrow—all tailored to Kenya’s mobile-driven, trust-focused market.
+
+Core Platform Features
+Branded Storefronts: Custom URLs (e.g., /shops/marys-beadworks), fully customizable with logos, banners, colors, fonts, drag-and-drop layouts, and optional custom CSS.
+ID Verification: Mandatory for sellers (before setup) and buyers (before purchase), ensuring trust.
+Transport Options: Sellers define delivery methods (e.g., “Boda boda - 200 KES,” “G4S - 500 KES”), selectable at checkout.
+M-Pesa Payments: STK Push via Daraja API for product + transport costs.
+Polygon Blockchain Escrow: Funds locked until delivery, released via M-Pesa B2C.
+Mobile-First Design: Optimized for Kenya’s 87% mobile penetration (CAK 2023).
+Localization: Swahili support alongside English.
+Tech Stack
+Next.js 14: Server-side rendering, modern app routing.
+React 18: Dynamic UI with hooks and concurrent rendering.
+TypeScript: Type safety for reliability.
+Prisma: ORM for database management.
+TailwindCSS: Responsive, customizable styling.
+Supabase: Authentication, PostgreSQL database, initial storage.
+Cloudinary: Cloud storage for shop assets (logos, banners, product images).
+dnd-kit: Drag-and-drop for layout customization.
+Polygon: Blockchain escrow infrastructure.
+Daraja API: M-Pesa payment integration.
+NextAuth.js: Authentication with email and social logins.
+Zod: Input validation for forms and APIs.
+Recharts: Seller dashboard analytics.
+Jest & React Testing Library: Testing suite.
+Vercel: Hosting and serverless deployment. 

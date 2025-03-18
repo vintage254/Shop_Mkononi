@@ -116,7 +116,8 @@ model Product {
   name        String
   price       Decimal  @db.Decimal(10, 2)
   images      String[]
-  category    String
+  categoryId  String   @map("category_id")
+  category    Category @relation(fields: [categoryId], references: [id])
   shopId      String   @map("shop_id")
   shop        Shop     @relation(fields: [shopId], references: [id])
   orders      Order[]
@@ -204,4 +205,15 @@ model Theme {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("themes")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("categories")
 }
