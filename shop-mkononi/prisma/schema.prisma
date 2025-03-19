@@ -64,17 +64,17 @@ model Session {
 }
 
 model User {
-  id                String            @id @default(uuid())
+  id                String            @id @default(cuid())
   email             String            @unique
-  password          String?           @db.VarChar(255)
+  password          String
   phone             String?           @unique
   role              UserRole          @default(BUYER)
   isVerified        Boolean           @default(false)
-  idImage           String?
-  idNumber          String?
+  idImage           String?           @map("idImage")
+  idNumber          String?           @map("id_number")
   verificationStatus VerificationStatus @default(PENDING)
-  shop              Shop?
-  orders            Order[]
+  verificationNotes  String?           @map("verification_notes")
+  verifiedAt        DateTime?         @map("verified_at")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
   accounts          Account[]
@@ -83,6 +83,8 @@ model User {
   cart              Cart?
   wishlist          Wishlist?
   notifications     Notification[]
+  shops             Shop[]            @relation("UserShops")
+  orders            Order[]
 
   @@map("users")
 }
@@ -92,8 +94,8 @@ model Shop {
   slug            String    @unique
   name            String
   description     String?
-  sellerId        String    @unique @map("seller_id")
-  seller          User      @relation(fields: [sellerId], references: [id])
+  sellerId        String    @map("seller_id")
+  seller          User      @relation("UserShops", fields: [sellerId], references: [id])
   logoUrl         String?   @map("logo_url")
   bannerUrl       String?   @map("banner_url")
   primaryColor    String    @default("#0F766E") @map("primary_color")

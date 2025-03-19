@@ -7,15 +7,26 @@ import SearchSection from "@/components/landing/SearchSection";
 import TrustSection from "@/components/landing/TrustSection";
 import CategoryList from "@/components/CategoryList";
 
+export const dynamic = 'force-dynamic';
+
+async function getCategories() {
+  try {
+    return await prisma.category.findMany({
+      orderBy: { name: "asc" },
+    });
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    return [];
+  }
+}
+
 export default async function Home({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const session = await getServerSession(authOptions);
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-  });
+  const categories = await getCategories();
 
   return (
     <main className="min-h-screen">
