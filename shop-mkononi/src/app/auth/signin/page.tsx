@@ -4,7 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ShoppingBag } from "lucide-react";
 import Image from "next/image";
 
 export default function SignIn() {
@@ -46,7 +46,7 @@ export default function SignIn() {
       setError("");
       console.log("Initiating Google sign-in");
       await signIn("google", { 
-        callbackUrl: "/auth/verify",
+        callbackUrl: "/",
         redirect: true
       });
     } catch (error) {
@@ -59,6 +59,9 @@ export default function SignIn() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="flex justify-center">
+          <ShoppingBag className="h-12 w-12 text-[#0F766E]" />
+        </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Sign in to your account
         </h2>
@@ -129,7 +132,7 @@ export default function SignIn() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-blue-700">
-                    All users (including Google Sign-In) must verify their identity with ID and selfie before accessing the platform.
+                    Want to sell on Shop Mkononi? <Link href="/seller/apply" className="font-medium underline">Apply to become a seller</Link> after signing in.
                   </p>
                 </div>
               </div>
@@ -206,9 +209,16 @@ export default function SignIn() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#0F766E] hover:bg-[#EA580C] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0F766E] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#0F766E] hover:bg-[#0F766E]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0F766E] disabled:opacity-50"
                 >
-                  {loading ? "Signing in..." : "Sign in"}
+                  {loading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Signing in...
+                    </div>
+                  ) : (
+                    "Sign in"
+                  )}
                 </button>
               </div>
             </form>

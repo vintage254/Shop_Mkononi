@@ -7,71 +7,67 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
-    const location = searchParams.get("location");
-    const search = searchParams.get("search");
-    const minPrice = searchParams.get("minPrice");
-    const maxPrice = searchParams.get("maxPrice");
-
-    const where: any = {};
-
-    if (category) {
-      where.categoryId = category;
-    }
-
-    if (location) {
-      where.location = {
-        contains: location,
-        mode: "insensitive",
-      };
-    }
-
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    if (minPrice || maxPrice) {
-      where.products = {
-        some: {
-          price: {
-            gte: minPrice ? parseFloat(minPrice) : undefined,
-            lte: maxPrice ? parseFloat(maxPrice) : undefined,
-          },
+    const query = searchParams.get("query");
+    const skip = Number(searchParams.get("skip") || "0");
+    
+    try {
+      // Build the where clause
+      const where: any = {};
+      if (category) {
+        where.category = category;
+      }
+      if (query) {
+        where.name = { contains: query, mode: 'insensitive' };
+      }
+      
+      // Use Prisma ORM with proper type safety
+      const shops = await prisma.shop.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          slug: true,
+          sellerId: true,
+          logoUrl: true,
+          bannerUrl: true,
+          primaryColor: true,
+          secondaryColor: true,
+          accentColor: true,
+          fontFamily: true,
+          themeId: true,
+          layoutConfig: true,
+          customCSS: true,
+          transportOptions: true,
+          createdAt: true,
+          updatedAt: true,
+          seller: {
+            select: {
+              id: true,
+              name: true,
+              isVerified: true
+            }
+          }
         },
-      };
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 12,
+        skip
+      });
+      
+      return NextResponse.json({ shops });
+    } catch (error) {
+      console.error("Error fetching shops:", error);
+      return NextResponse.json(
+        { error: "Error fetching shops", shops: [] },
+        { status: 500 }
+      );
     }
-
-    const shops = await prisma.shop.findMany({
-      where,
-      include: {
-        category: true,
-        products: {
-          select: {
-            id: true,
-            price: true,
-          },
-        },
-        seller: {
-          select: {
-            id: true,
-            name: true,
-            isVerified: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 12, // Limit to 12 shops per page
-    });
-
-    return NextResponse.json(shops);
   } catch (error) {
-    console.error("Error fetching shops:", error);
+    console.error("Error in shops API:", error);
     return NextResponse.json(
-      { error: "Failed to fetch shops" },
+      { error: "An error occurred" },
       { status: 500 }
     );
   }
@@ -80,48 +76,67 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+
+    if (!session?.user || session.user.role !== "SELLER") {
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 403 }
       );
     }
 
-    const data = await request.json();
-    const { name, description, categoryId, location } = data;
-
-    // Create URL-friendly slug from name
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-
-    const shop = await prisma.shop.create({
-      data: {
+    const body = await request.json();
+    
+    try {
+      // Extract data from body with defaults
+      const {
         name,
+        description = '',
         slug,
-        description,
-        categoryId,
-        location,
-        sellerId: session.user.id,
-      },
-      include: {
-        category: true,
-        seller: {
-          select: {
-            name: true,
-            isVerified: true,
-          },
-        },
-      },
-    });
-
-    return NextResponse.json(shop);
+        logoUrl = null,
+        bannerUrl = null,
+        primaryColor = '#000000',
+        secondaryColor = '#ffffff',
+        accentColor = '#0070f3',
+        fontFamily = 'sans-serif',
+        themeId = 'default',
+        layoutConfig = '{}',
+        customCSS = '',
+        transportOptions = '[]'
+      } = body;
+      
+      // Create shop with Prisma ORM
+      const shop = await prisma.shop.create({
+        data: {
+          name,
+          description,
+          slug,
+          sellerId: session.user.id,
+          logoUrl,
+          bannerUrl,
+          primaryColor,
+          secondaryColor,
+          accentColor,
+          fontFamily,
+          themeId,
+          layoutConfig,
+          customCSS,
+          transportOptions
+        }
+      });
+      
+      return NextResponse.json(shop, { status: 201 });
+    } catch (error) {
+      console.error("Error creating shop:", error);
+      return NextResponse.json(
+        { error: "Failed to create shop" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("Error creating shop:", error);
+    console.error("Error in creating shop:", error);
     return NextResponse.json(
-      { error: "Failed to create shop" },
+      { error: "An error occurred" },
       { status: 500 }
     );
   }
-} 
+}

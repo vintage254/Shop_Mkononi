@@ -37,6 +37,16 @@ export default function Navbar() {
                     Dashboard
                   </Link>
                 )}
+                {session.user.role === "BUYER" && !session.user.requestedRole && (
+                  <Link href="/seller/apply" className="text-white bg-[#0F766E] hover:bg-[#0F766E]/90 px-4 py-2 rounded-lg">
+                    Become a Seller
+                  </Link>
+                )}
+                {session.user.role === "BUYER" && session.user.requestedRole === "SELLER" && (
+                  <Link href="/seller/pending" className="text-white bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg">
+                    Application Pending
+                  </Link>
+                )}
               </>
             )}
           </div>
@@ -123,6 +133,24 @@ export default function Navbar() {
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Dashboard
+                    </Link>
+                  )}
+                  {session.user.role === "BUYER" && !session.user.requestedRole && (
+                    <Link
+                      href="/seller/apply"
+                      className="text-[#0F766E] font-semibold hover:text-[#EA580C] px-2"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Become a Seller
+                    </Link>
+                  )}
+                  {session.user.role === "BUYER" && session.user.requestedRole === "SELLER" && (
+                    <Link
+                      href="/seller/pending"
+                      className="text-yellow-600 font-semibold hover:text-yellow-700 px-2"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Application Pending
                     </Link>
                   )}
                 </>

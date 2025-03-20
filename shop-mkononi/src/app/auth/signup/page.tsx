@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
+import { Eye, EyeOff, ShoppingBag } from "lucide-react";
 
 export default function SignUp() {
   const router = useRouter();
@@ -15,14 +16,13 @@ export default function SignUp() {
     name: "",
     phone: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,13 +30,22 @@ export default function SignUp() {
     setError("");
     setLoading(true);
 
+    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       setLoading(false);
       return;
     }
 
+    // Validate password strength
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      setLoading(false);
+      return;
+    }
+
     try {
+      // Call the signup API
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
@@ -47,13 +56,14 @@ export default function SignUp() {
           password: formData.password,
           name: formData.name,
           phone: formData.phone,
+          role: "BUYER", // Always set role to BUYER by default
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Something went wrong");
+        throw new Error(data.error || "Failed to create account");
       }
 
       // Sign in the user after successful registration
@@ -69,8 +79,9 @@ export default function SignUp() {
 
       router.push("/");
       router.refresh();
-    } catch (error: any) {
-      setError(error.message || "Failed to create account");
+    } catch (error) {
+      console.error("Signup error:", error);
+      setError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -95,6 +106,9 @@ export default function SignUp() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="flex justify-center">
+          <ShoppingBag className="h-12 w-12 text-[#0F766E]" />
+        </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Create your account
         </h2>
@@ -112,10 +126,25 @@ export default function SignUp() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {error && (
-            <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            <div className="mb-4 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
               {error}
             </div>
           )}
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-700">
+                  Want to sell on Shop Mkononi? You can apply to become a seller after creating your account.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-6">
             <div>
@@ -156,22 +185,7 @@ export default function SignUp() {
               </div>
             </div>
 
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-blue-700">
-                    All users must verify their identity with ID and selfie before accessing the platform.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label
                   htmlFor="name"
@@ -185,10 +199,9 @@ export default function SignUp() {
                     name="name"
                     type="text"
                     autoComplete="name"
-                    required
                     value={formData.name}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm text-gray-900"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
                     placeholder="John Doe"
                   />
                 </div>
@@ -210,7 +223,7 @@ export default function SignUp() {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm text-gray-900"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -232,8 +245,8 @@ export default function SignUp() {
                     required
                     value={formData.phone}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm text-gray-900"
-                    placeholder="+254712345678"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
+                    placeholder="+254 7XX XXX XXX"
                   />
                 </div>
               </div>
@@ -245,19 +258,33 @@ export default function SignUp() {
                 >
                   Password
                 </label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm text-gray-900"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Must be at least 8 characters
+                </p>
               </div>
 
               <div>
@@ -267,17 +294,29 @@ export default function SignUp() {
                 >
                   Confirm Password
                 </label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     required
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm text-gray-900"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -285,9 +324,16 @@ export default function SignUp() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#0F766E] hover:bg-[#EA580C] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0F766E] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#0F766E] hover:bg-[#0F766E]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0F766E] disabled:opacity-50"
                 >
-                  {loading ? "Creating account..." : "Create account"}
+                  {loading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Creating account...
+                    </div>
+                  ) : (
+                    "Create account"
+                  )}
                 </button>
               </div>
             </form>

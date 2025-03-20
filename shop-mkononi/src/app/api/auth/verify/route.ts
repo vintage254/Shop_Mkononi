@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     const idFrontImage = formData.get("idFrontImage") as File;
     const idBackImage = formData.get("idBackImage") as File;
     const selfieImage = formData.get("selfieImage") as File;
+    const applicationType = formData.get("applicationType") as string || "SELLER";
 
     if (!idNumber || !idFrontImage || !idBackImage || !selfieImage) {
       console.error("Missing required fields:", {
@@ -82,18 +83,35 @@ export async function POST(req: Request) {
 
       // Update user verification details
       console.log("Updating user verification details");
-      await prisma.$executeRaw`
-        UPDATE users 
-        SET 
-          id_number = ${idNumber},
-          id_front_image = ${idFrontUploadResult.secure_url},
-          id_back_image = ${idBackUploadResult.secure_url},
-          selfie_image = ${selfieUploadResult.secure_url},
-          verification_status = 'PENDING',
-          verification_notes = 'Awaiting admin review',
-          updated_at = NOW()
-        WHERE id = ${session.user.id}
-      `;
+      
+      if (applicationType === "SELLER") {
+        await prisma.$executeRaw`
+          UPDATE users 
+          SET 
+            id_number = ${idNumber},
+            id_front_image = ${idFrontUploadResult.secure_url},
+            id_back_image = ${idBackUploadResult.secure_url},
+            selfie_image = ${selfieUploadResult.secure_url},
+            requested_role = 'SELLER',
+            verification_status = 'PENDING',
+            verification_notes = 'Seller application under review',
+            updated_at = NOW()
+          WHERE id = ${session.user.id}
+        `;
+      } else {
+        await prisma.$executeRaw`
+          UPDATE users 
+          SET 
+            id_number = ${idNumber},
+            id_front_image = ${idFrontUploadResult.secure_url},
+            id_back_image = ${idBackUploadResult.secure_url},
+            selfie_image = ${selfieUploadResult.secure_url},
+            verification_status = 'PENDING',
+            verification_notes = 'Awaiting admin review',
+            updated_at = NOW()
+          WHERE id = ${session.user.id}
+        `;
+      }
 
       console.log("Verification documents submitted successfully");
       return NextResponse.json(
@@ -114,4 +132,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-} 
+}

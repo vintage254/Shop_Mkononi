@@ -11,9 +11,15 @@ export const dynamic = 'force-dynamic';
 
 async function getCategories() {
   try {
-    return await prisma.category.findMany({
-      orderBy: { name: "asc" },
-    });
+    // Use a direct $queryRaw to avoid prepared statement issues
+    const categoriesRaw = await prisma.$queryRaw`
+      SELECT id, name, description, created_at as "createdAt", updated_at as "updatedAt"
+      FROM categories
+      ORDER BY name ASC
+    `;
+    
+    // Convert the raw result to the expected format
+    return Array.isArray(categoriesRaw) ? categoriesRaw : [];
   } catch (error) {
     console.error("Error fetching categories:", error);
     return [];

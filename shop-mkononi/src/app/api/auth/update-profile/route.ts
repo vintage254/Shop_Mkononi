@@ -6,8 +6,9 @@ import { z } from "zod";
 
 // Schema for input validation
 const updateProfileSchema = z.object({
-  role: z.enum(["BUYER", "SELLER"]),
-  phone: z.string().regex(/^\+\d{1,3}\d{9,}$/, "Invalid phone number format"),
+  role: z.enum(["BUYER", "SELLER"]).optional(),
+  requestedRole: z.enum(["SELLER"]).optional(),
+  phone: z.string().regex(/^\+?\d{1,3}[\s-]?\d{9,}$/, "Invalid phone number format"),
 });
 
 export async function PUT(req: Request) {
@@ -36,7 +37,7 @@ export async function PUT(req: Request) {
       );
     }
 
-    const { role, phone } = result.data;
+    const { role, requestedRole, phone } = result.data;
 
     // If phone number is provided, check if it's already taken by another user
     if (phone) {
@@ -53,12 +54,41 @@ export async function PUT(req: Request) {
       }
     }
 
-    // Update user profile
-    await prisma.$executeRaw`
-      UPDATE users 
-      SET role = ${role}, phone = ${phone}, updated_at = NOW() 
-      WHERE id = ${session.user.id}
-    `;
+    // Handle seller application
+    if (requestedRole === "SELLER") {
+      // Update user with requested role and set verification status to PENDING
+      await prisma.$executeRaw`
+        UPDATE users 
+        SET requested_role = 'SELLER', 
+            phone = ${phone}, 
+            verification_status = 'PENDING', 
+            updated_at = NOW() 
+        WHERE id = ${session.user.id}
+      `;
+      
+      console.log("Seller application initiated for user:", session.user.id);
+      
+      return NextResponse.json(
+        { message: "Seller application initiated" },
+        { status: 200 }
+      );
+    }
+
+    // Regular profile update (for admins or system updates)
+    if (role) {
+      await prisma.$executeRaw`
+        UPDATE users 
+        SET role = ${role}, phone = ${phone}, updated_at = NOW() 
+        WHERE id = ${session.user.id}
+      `;
+    } else {
+      // Just update phone
+      await prisma.$executeRaw`
+        UPDATE users 
+        SET phone = ${phone}, updated_at = NOW() 
+        WHERE id = ${session.user.id}
+      `;
+    }
 
     console.log("Profile updated successfully");
     

@@ -9,7 +9,10 @@ declare module "next-auth" {
       name?: string | null;
       image?: string | null;
       role: "BUYER" | "SELLER";
+      requestedRole?: "BUYER" | "SELLER" | null;
       phone: string;
+      isVerified: boolean;
+      verificationStatus: string;
     }
   }
 
@@ -19,8 +22,11 @@ declare module "next-auth" {
     name?: string | null;
     image?: string | null;
     role: "BUYER" | "SELLER";
+    requestedRole?: "BUYER" | "SELLER" | null;
     phone: string;
     password?: string;
+    isVerified: boolean;
+    verificationStatus: VerificationStatus;
   }
 }
 
@@ -28,7 +34,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: UserRole;
+    requestedRole?: UserRole | null;
     isVerified: boolean;
     verificationStatus: VerificationStatus;
   }
-} 
+}
