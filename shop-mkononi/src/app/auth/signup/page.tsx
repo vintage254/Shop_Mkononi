@@ -45,6 +45,7 @@ export default function SignUp() {
     }
 
     try {
+      console.log("Submitting signup form");
       // Call the signup API
       const response = await fetch("/api/auth/signup", {
         method: "POST",
@@ -61,24 +62,55 @@ export default function SignUp() {
       });
 
       const data = await response.json();
+      console.log("Signup response:", response.status, data);
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to create account");
       }
 
-      // Sign in the user after successful registration
-      const result = await signIn("credentials", {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-      });
+      console.log("Account created successfully, attempting to sign in");
+      
+      // After successful account creation, redirect to the sign-in page
+      // instead of trying to automatically sign in
+      setError("");
+      router.push("/auth/signin?registered=true");
+      return;
+      
+      /* Commenting out automatic sign-in for now since it's causing URL errors
+      try {
+        // Sign in the user after successful registration
+        const result = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: false
+        });
 
-      if (result?.error) {
-        throw new Error(result.error);
+        console.log("Sign-in result after registration:", result);
+
+        if (result?.error) {
+          console.error("Sign-in error after registration:", result.error);
+          // If we can't automatically sign in, redirect to sign-in page
+          if (result.error === "CredentialsSignin") {
+            setError("Account created but couldn't sign in automatically. Please sign in manually.");
+            setTimeout(() => {
+              router.push("/auth/signin");
+            }, 2000);
+            return;
+          }
+          throw new Error(result.error);
+        }
+
+        console.log("Registration and sign-in successful, redirecting to homepage");
+        router.push("/");
+        router.refresh();
+      } catch (signInError) {
+        console.error("Error during automatic sign-in:", signInError);
+        setError("Account created successfully. Please sign in manually.");
+        setTimeout(() => {
+          router.push("/auth/signin");
+        }, 2000);
       }
-
-      router.push("/");
-      router.refresh();
+      */
     } catch (error) {
       console.error("Signup error:", error);
       setError(error instanceof Error ? error.message : "Something went wrong");
@@ -201,7 +233,7 @@ export default function SignUp() {
                     autoComplete="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm bg-white text-gray-900"
                     placeholder="John Doe"
                   />
                 </div>
@@ -223,7 +255,7 @@ export default function SignUp() {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm bg-white text-gray-900"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -245,7 +277,7 @@ export default function SignUp() {
                     required
                     value={formData.phone}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm bg-white text-gray-900"
                     placeholder="+254 7XX XXX XXX"
                   />
                 </div>
@@ -267,7 +299,7 @@ export default function SignUp() {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm bg-white text-gray-900"
                     placeholder="••••••••"
                   />
                   <button
@@ -303,7 +335,7 @@ export default function SignUp() {
                     required
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm bg-white text-gray-900"
                     placeholder="••••••••"
                   />
                   <button

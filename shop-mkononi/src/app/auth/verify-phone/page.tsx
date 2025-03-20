@@ -200,7 +200,7 @@ export default function VerifyPhonePage() {
                     value={formData.phone}
                     onChange={handleChange}
                     required
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm text-gray-900"
                     placeholder="+254 XXX XXX XXX"
                   />
                 </div>
@@ -240,7 +240,7 @@ export default function VerifyPhonePage() {
                     value={formData.code}
                     onChange={handleChange}
                     required
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm bg-white text-gray-900"
                     placeholder="Enter 6-digit code"
                   />
                 </div>

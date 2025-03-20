@@ -38,7 +38,7 @@ export default function Navbar() {
                   </Link>
                 )}
                 {session.user.role === "BUYER" && !session.user.requestedRole && (
-                  <Link href="/seller/apply" className="text-white bg-[#0F766E] hover:bg-[#0F766E]/90 px-4 py-2 rounded-lg">
+                  <Link href="/auth/verify" className="text-white bg-[#0F766E] hover:bg-[#0F766E]/90 px-4 py-2 rounded-lg">
                     Become a Seller
                   </Link>
                 )}
@@ -55,9 +55,9 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-4">
             {session ? (
               <div className="flex items-center space-x-4">
-                <Link href="/profile" className="flex items-center space-x-2 text-gray-700">
+                <Link href="/dashboard" className="flex items-center space-x-2 text-gray-700">
                   <User className="h-5 w-5" />
-                  <span>{session.user.name || 'Profile'}</span>
+                  <span>{session.user.name || 'Dashboard'}</span>
                 </Link>
                 <button
                   onClick={() => signOut()}
@@ -137,7 +137,7 @@ export default function Navbar() {
                   )}
                   {session.user.role === "BUYER" && !session.user.requestedRole && (
                     <Link
-                      href="/seller/apply"
+                      href="/auth/verify"
                       className="text-[#0F766E] font-semibold hover:text-[#EA580C] px-2"
                       onClick={() => setIsMenuOpen(false)}
                     >
@@ -158,11 +158,11 @@ export default function Navbar() {
               {session ? (
                 <>
                   <Link
-                    href="/profile"
+                    href="/dashboard"
                     className="text-gray-700 hover:text-[#EA580C] px-2"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Profile
+                    Dashboard
                   </Link>
                   <button
                     onClick={() => {

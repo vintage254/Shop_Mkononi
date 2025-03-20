@@ -88,7 +88,7 @@ model User {
   phoneVerified     Boolean           @default(false) @map("phone_verified")
   role              UserRole          @default(BUYER)
   requestedRole     UserRole?         @map("requested_role")
-  isVerified        Boolean           @default(false)
+  isVerified        Boolean           @default(false) @map("is_verified")
   idNumber          String?           @map("id_number")
   idFrontImage      String?           @map("id_front_image")
   idBackImage       String?           @map("id_back_image")

@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request });
+  // Avoid reading body by simplifying token checks
+  const token = await getToken({ 
+    req: request, 
+    secret: process.env.NEXTAUTH_SECRET
+  });
   
   console.log("Middleware - URL:", request.nextUrl.pathname);
   console.log("Middleware - Token:", token ? "Present" : "Not present");
@@ -22,41 +25,13 @@ export async function middleware(request: NextRequest) {
 
   // If the user is not logged in and trying to access a protected route
   if (!token && !isPublicPath) {
-    // Redirect to signin for /shops and shop-related paths
-    if (request.nextUrl.pathname.startsWith('/shops') || request.nextUrl.pathname === '/shops') {
-      console.log("Middleware - Redirecting to signin (shops require authentication)");
-      return NextResponse.redirect(new URL("/auth/signin?callbackUrl=" + request.nextUrl.pathname, request.url));
-    }
-    
-    // Check if this is a shop page that might require verification
-    if (request.nextUrl.pathname.startsWith('/shops/')) {
-      const slug = request.nextUrl.pathname.split('/')[2]; // Extract slug from /shops/[slug]
-      
-      // Check if this shop requires buyer verification
-      try {
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-          process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-        );
-        
-        const { data: shop } = await supabase
-          .from('shops')
-          .select('buyer_verification')
-          .eq('slug', slug)
-          .single();
-        
-        // If shop requires verification, redirect to signin
-        if (shop && shop.buyer_verification !== 'NONE') {
-          console.log("Middleware - Redirecting to signin (shop requires verification)");
-          return NextResponse.redirect(new URL("/auth/signin", request.url));
-        }
-      } catch (error) {
-        console.error("Middleware - Error checking shop verification:", error);
-        // Continue as if no verification required in case of error
-      }
-      
-      // If no verification required or error occurred, allow access
-      return NextResponse.next();
+    // For protected routes, redirect to signin
+    if (request.nextUrl.pathname.startsWith('/dashboard') || 
+        request.nextUrl.pathname.startsWith('/seller') ||
+        request.nextUrl.pathname.startsWith('/shops')) {
+      console.log("Middleware - Redirecting to signin (not authenticated)");
+      const callbackUrl = encodeURIComponent(request.nextUrl.pathname);
+      return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${callbackUrl}`, request.url));
     }
     
     // For other protected routes, redirect to signin
@@ -66,19 +41,20 @@ export async function middleware(request: NextRequest) {
 
   // If the user is logged in but trying to access auth pages
   if (token && ["/auth/signin", "/auth/signup"].includes(request.nextUrl.pathname)) {
-    console.log("Middleware - Redirecting to home (already authenticated)");
-    return NextResponse.redirect(new URL("/", request.url));
+    console.log("Middleware - Redirecting to dashboard (already authenticated)");
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // Handle verification requirements
+  // Handle role-based access and verification requirements
   if (token) {
     const isVerificationPath = request.nextUrl.pathname === "/auth/verify";
-    const needsVerification = token.verificationStatus !== "VERIFIED";
+    const hasPendingVerification = token.verificationStatus === "PENDING" && token.requested_role === "SELLER";
     
     console.log("Middleware - Verification check:", {
       isVerificationPath,
-      needsVerification,
-      pathname: request.nextUrl.pathname
+      hasPendingVerification,
+      pathname: request.nextUrl.pathname,
+      role: token.role
     });
 
     // Always allow access to verification page
@@ -90,58 +66,19 @@ export async function middleware(request: NextRequest) {
     // Seller-specific routes
     if (request.nextUrl.pathname.startsWith("/seller")) {
       if (token.role !== "SELLER") {
-        console.log("Middleware - Redirecting to home (not a seller)");
-        return NextResponse.redirect(new URL("/", request.url));
-      }
-      if (needsVerification) {
-        console.log("Middleware - Redirecting to verify (seller needs verification)");
-        return NextResponse.redirect(new URL("/auth/verify", request.url));
-      }
-    }
-
-    // Admin routes
-    if (request.nextUrl.pathname.startsWith("/admin")) {
-      if (token.role !== "ADMIN") {
-        console.log("Middleware - Redirecting to home (not an admin)");
-        return NextResponse.redirect(new URL("/", request.url));
-      }
-    }
-    
-    // Shop-specific routes that may require buyer verification
-    if (request.nextUrl.pathname.startsWith('/shops/')) {
-      const slug = request.nextUrl.pathname.split('/')[2]; // Extract slug from /shops/[slug]
-      
-      // Check if this shop requires buyer verification
-      try {
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-          process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-        );
-        
-        const { data: shop } = await supabase
-          .from('shops')
-          .select('buyer_verification')
-          .eq('slug', slug)
-          .single();
-        
-        // If shop requires ID verification and user is not verified
-        if (shop && shop.buyer_verification === 'ID' && needsVerification) {
-          console.log("Middleware - Redirecting to verify (shop requires ID verification)");
+        // If the user is a BUYER but has applied to be a SELLER and verification is pending
+        if (token.role === "BUYER" && token.requested_role === "SELLER" && token.verificationStatus === "PENDING") {
+          console.log("Middleware - Redirecting to verify (seller application pending)");
           return NextResponse.redirect(new URL("/auth/verify", request.url));
         }
         
-        // If shop requires PHONE verification and user doesn't have a phone
-        if (shop && shop.buyer_verification === 'PHONE' && !token.phone) {
-          console.log("Middleware - Redirecting to verify phone (shop requires phone verification)");
-          return NextResponse.redirect(new URL("/auth/verify-phone", request.url));
-        }
-      } catch (error) {
-        console.error("Middleware - Error checking shop verification:", error);
-        // Continue as if no verification required in case of error
+        console.log("Middleware - Redirecting to home (not a seller)");
+        return NextResponse.redirect(new URL("/", request.url));
       }
     }
   }
 
+  // Allow all other requests
   return NextResponse.next();
 }
 

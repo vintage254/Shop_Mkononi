@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, ShoppingBag } from "lucide-react";
 import Image from "next/image";
+import { signIn } from "next-auth/react";
 
 export default function SignIn() {
   const router = useRouter();
@@ -13,46 +13,67 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const callbackUrl = "/dashboard";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('registered') === 'true') {
+      setSuccess("Account created successfully! Please sign in with your credentials.");
+    }
+    if (searchParams.get('error')) {
+      setError(searchParams.get('error') === 'CredentialsSignin' 
+        ? "Invalid email or password" 
+        : searchParams.get('error') || "An error occurred");
+    }
+  }, []);
+
+  async function handleSignIn(formData: FormData) {
     setLoading(true);
-
+    setError("");
+    
     try {
+      const email = formData.get("email") as string;
+      const password = formData.get("password") as string;
+      
+      if (!email || !password) {
+        setError("Please provide both email and password");
+        setLoading(false);
+        return;
+      }
+      
+      console.log("Signing in with:", { email, callbackUrl });
+      
       const result = await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        redirect: true,
+        callbackUrl: callbackUrl || "/dashboard"  // Default to dashboard if no callback URL provided
       });
-
+      
+      // This will only execute if redirect is false
       if (result?.error) {
+        console.error("Sign-in error:", result.error);
         setError("Invalid email or password");
-      } else {
-        router.push("/"); // Redirect to home page after successful login
-        router.refresh(); // Refresh the page to update session
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      console.error("Sign-in exception:", error);
+      setError("An error occurred during sign-in. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
+  // Handle Google sign-in  
   const handleGoogleSignIn = async () => {
     try {
-      setLoading(true);
-      setError("");
-      console.log("Initiating Google sign-in");
       await signIn("google", { 
-        callbackUrl: "/",
-        redirect: true
+        callbackUrl: callbackUrl || "/dashboard" 
       });
     } catch (error) {
       console.error("Google sign-in error:", error);
-      setError("Failed to sign in with Google");
-      setLoading(false);
+      setError("Could not sign in with Google. Please try again.");
     }
   };
 
@@ -83,10 +104,17 @@ export default function SignIn() {
               {error}
             </div>
           )}
+
+          {success && (
+            <div className="mb-4 bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+              {success}
+            </div>
+          )}
           
           <div className="space-y-6">
             <div>
-              <button
+              <a
+                href="#"
                 onClick={handleGoogleSignIn}
                 className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0F766E]"
               >
@@ -111,7 +139,7 @@ export default function SignIn() {
                   </g>
                 </svg>
                 Sign in with Google
-              </button>
+              </a>
             </div>
 
             <div className="relative">
@@ -138,7 +166,15 @@ export default function SignIn() {
               </div>
             </div>
 
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {/* Direct form submission to NextAuth endpoint */}
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              handleSignIn(formData);
+            }} className="space-y-6">
+              <input name="csrfToken" type="hidden" defaultValue={Math.random().toString(36).substring(2, 15)} />
+              <input type="hidden" name="callbackUrl" value="/dashboard" />
+              
               <div>
                 <label
                   htmlFor="email"
@@ -155,7 +191,7 @@ export default function SignIn() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm text-gray-900"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm bg-white text-gray-900"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -177,7 +213,7 @@ export default function SignIn() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm text-gray-900"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#0F766E] focus:border-[#0F766E] sm:text-sm bg-white text-gray-900"
                     placeholder="••••••••"
                   />
                   <button

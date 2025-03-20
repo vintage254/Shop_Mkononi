@@ -4,6 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "./prisma";
 import { UserRole, VerificationStatus } from "@prisma/client";
 import { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 // Extend session and JWT types with our custom properties
 declare module "next-auth" {
@@ -12,11 +13,11 @@ declare module "next-auth" {
     email: string;
     name?: string;
     image?: string;
-    role: UserRole;
+    role: string;
     requestedRole?: string | null;
     phone: string | null;
     isVerified: boolean;
-    verificationStatus: VerificationStatus;
+    verificationStatus: string;
   }
 
   interface Session {
@@ -25,11 +26,11 @@ declare module "next-auth" {
       email: string;
       name?: string;
       image?: string;
-      role: UserRole;
+      role: string;
       requestedRole?: string | null;
       phone: string | null;
       isVerified: boolean;
-      verificationStatus: VerificationStatus;
+      verificationStatus: string;
     };
   }
 }
@@ -40,11 +41,11 @@ declare module "next-auth/jwt" {
     email: string;
     name?: string;
     image?: string;
-    role: UserRole;
+    role: string;
     requestedRole?: string | null;
     phone: string | null;
     isVerified: boolean;
-    verificationStatus: VerificationStatus;
+    verificationStatus: string;
   }
 }
 
@@ -56,6 +57,9 @@ interface UserQueryResult {
   requested_role?: string | null;
   phone?: string | null;
 }
+
+// Make sure the NEXTAUTH_URL is properly formatted
+const nextAuthUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
 
 export const authOptions: NextAuthOptions = {
   // Temporarily do not use the adapter to avoid database field issues
@@ -70,6 +74,17 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/error",
     verifyRequest: "/auth/verify",
   },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -82,11 +97,78 @@ export const authOptions: NextAuthOptions = {
         }
       }
     }),
-    // We can add the credentials provider back once the password field is available in the database
+    // Email and password login
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials, req) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        try {
+          // Find user
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+            select: {
+              id: true,
+              email: true,
+              password: true,
+              name: true,
+              image: true,
+              role: true,
+              requestedRole: true,
+              phone: true,
+              isVerified: true,
+              verificationStatus: true
+            }
+          });
+
+          if (!user) {
+            return null;
+          }
+
+          // Verify password
+          const isValidPassword = await bcrypt.compare(
+            credentials.password,
+            user.password || ''
+          );
+
+          if (!isValidPassword) {
+            return null;
+          }
+
+          // Return user object for jwt callback
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name ?? undefined,
+            image: user.image ?? undefined,
+            role: user.role,
+            requestedRole: user.requestedRole,
+            phone: user.phone,
+            isVerified: user.isVerified ?? false,
+            verificationStatus: user.verificationStatus
+          };
+        } catch (error: any) {
+          console.error("Error in authorize callback:", error);
+          return null;
+        }
+      }
+    }),
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
       try {
+        // For Credentials Sign In - always allow if user was returned from authorize
+        if (account?.provider === "credentials" && user) {
+          console.log("Credentials sign-in successful for:", user.email);
+          return true; // Return true instead of a path to ensure proper token generation
+        }
+        
         // For Google Sign In
         if (account?.provider === "google" && user) {
           console.log("Google sign-in attempt for:", user.email);
@@ -154,16 +236,16 @@ export const authOptions: NextAuthOptions = {
               }
               
               // Create user with minimal fields using the Prisma client
-              const userData: Prisma.UserUncheckedCreateInput = {
+              const userData: any = {
                 email: user.email,
                 name: user.name || '',
                 image: user.image || '',
-                role: 'BUYER' as UserRole,
+                role: 'BUYER',
                 // Required fields with proper types
                 password: "", // Empty string instead of undefined
                 phoneVerified: false,
                 isVerified: false,
-                verificationStatus: 'PENDING' as VerificationStatus,
+                verificationStatus: 'PENDING',
               };
               
               await prisma.user.create({
@@ -193,11 +275,11 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email;
         session.user.name = token.name;
         session.user.image = token.image;
-        session.user.role = (token.role || "BUYER") as UserRole;
+        session.user.role = (token.role || "BUYER");
         session.user.requestedRole = token.requestedRole as string | null;
         session.user.phone = token.phone;
         session.user.isVerified = token.isVerified || false;
-        session.user.verificationStatus = (token.verificationStatus || "PENDING") as VerificationStatus;
+        session.user.verificationStatus = (token.verificationStatus || "PENDING");
       }
       return session;
     },
@@ -210,33 +292,47 @@ export const authOptions: NextAuthOptions = {
         token.phone = user.phone;
         token.isVerified = user.isVerified || false;
         token.verificationStatus = user.verificationStatus || "PENDING";
+        
+        // For debugging purposes
+        console.log("JWT token after user sign-in:", {
+          sub: token.sub,
+          email: token.email,
+          role: token.role,
+          verificationStatus: token.verificationStatus
+        });
       } else if (token?.email) {
         try {
-          // Escape single quotes in user input for SQL safety
-          const safeEmail = token.email.replace(/'/g, "''");
+          // Find user without using raw SQL to avoid any potential issues
+          const user = await prisma.user.findUnique({
+            where: { email: token.email },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              role: true,
+              requestedRole: true,
+              phone: true,
+              isVerified: true,
+              verificationStatus: true
+            }
+          });
           
-          // Refresh user data from the database on subsequent requests
-          const result = await prisma.$queryRawUnsafe<UserQueryResult[]>(`
-            SELECT id, email, role, requested_role, phone
-            FROM users 
-            WHERE email = '${safeEmail}'
-            LIMIT 1
-          `);
-          
-          const userFound = Array.isArray(result) && result.length > 0;
-          
-          if (userFound) {
-            const user = result[0];
+          if (user) {
             // Update token with latest user data
             token.id = user.id;
-            // Cast string role to UserRole type
-            token.role = (user.role || "BUYER") as UserRole;
-            // Handle potentially undefined requested_role with null as fallback
-            token.requestedRole = user.requested_role || null;
-            token.phone = user.phone || null;
-            // We don't have these fields in the database yet, so use defaults
-            token.isVerified = false;
-            token.verificationStatus = "PENDING" as VerificationStatus;
+            token.role = user.role;
+            token.requestedRole = user.requestedRole;
+            token.phone = user.phone;
+            token.isVerified = user.isVerified || false;
+            token.verificationStatus = user.verificationStatus;
+            
+            // For debugging purposes
+            console.log("JWT token refreshed:", {
+              sub: token.sub,
+              email: token.email,
+              role: token.role,
+              verificationStatus: token.verificationStatus
+            });
           }
         } catch (error) {
           console.error("Error refreshing user data in JWT callback:", error);
